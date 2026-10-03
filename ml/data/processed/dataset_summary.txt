@@ -1,0 +1,101 @@
+================================================================================
+ HYPERLOCAL EMERGENCY RESPONSE PLATFORM - ML DATASET SUMMARY
+================================================================================
+
+1. RECORD COUNTS:
+   - Total Clean Records  : 25,945
+   - Clean Train Records  : 20,749
+   - Clean Test Records   : 5,196
+   - Train Split Ratio    : 79.97%
+   - Test Split Ratio     : 20.03%
+
+2. DATA CLEANING & DEDUPLICATION:
+   - Raw Train Rows       : 20,791
+   - Raw Test Rows        : 5,198
+   - Empty Messages Removed (Train): 1
+   - Empty Messages Removed (Test) : 0
+   - Duplicate Messages Removed (Train): 41
+   - Duplicate Messages Removed (Test) : 2
+   - Total Removed Records: 44
+
+3. DATASET COLUMNS & SCHEMA:
+   - Total Columns: 38
+   - Columns: ['text', 'emergency', 'class_labels', 'request', 'offer', 'aid_related', 'medical_help', 'medical_products', 'search_and_rescue', 'security', 'military', 'child_alone', 'water', 'food', 'shelter', 'clothing', 'money', 'missing_people', 'refugees', 'death', 'other_aid', 'infrastructure_related', 'transport', 'buildings', 'electricity', 'tools', 'hospitals', 'shops', 'aid_centers', 'other_infrastructure', 'weather_related', 'floods', 'storm', 'fire', 'earthquake', 'cold', 'other_weather', 'direct_report']
+   - Primary Features:
+     * 'text'         : Cleaned emergency distress message in English
+     * 'emergency'    : Binary indicator (1 = Emergency, 0 = Non-emergency)
+     * 'class_labels' : List of active disaster / hazard labels
+     * 36 Category Columns: Binary one-hot flags for each disaster category
+
+4. LABEL DISTRIBUTION & FREQUENCY (Combined Clean Dataset):
+   - Number of Unique Labels: 35
+   ----------------------------------------------------------------------
+   Rank  Label Name                 Occurrences    Message % 
+   ----------------------------------------------------------------------
+   1     emergency                  19,853          76.52%
+   2     aid_related                10,833          41.75%
+   3     weather_related            7,274           28.04%
+   4     direct_report              5,059           19.50%
+   5     request                    4,462           17.20%
+   6     other_aid                  3,439           13.25%
+   7     food                       2,915           11.24%
+   8     earthquake                 2,442            9.41%
+   9     storm                      2,439            9.40%
+   10    shelter                    2,307            8.89%
+   11    floods                     2,147            8.28%
+   12    medical_help               2,080            8.02%
+   13    infrastructure_related     1,704            6.57%
+   14    water                      1,668            6.43%
+   15    other_weather              1,376            5.30%
+   16    buildings                  1,329            5.12%
+   17    medical_products           1,309            5.05%
+   18    transport                  1,198            4.62%
+   19    death                      1,192            4.59%
+   20    other_infrastructure       1,150            4.43%
+   21    refugees                   873              3.36%
+   22    military                   859              3.31%
+   23    search_and_rescue          724              2.79%
+   24    money                      602              2.32%
+   25    electricity                532              2.05%
+   26    cold                       527              2.03%
+   27    security                   470              1.81%
+   28    clothing                   404              1.56%
+   29    aid_centers                309              1.19%
+   30    missing_people             298              1.15%
+   31    hospitals                  283              1.09%
+   32    fire                       282              1.09%
+   33    tools                      159              0.61%
+   34    shops                      120              0.46%
+   35    offer                      117              0.45%
+   ----------------------------------------------------------------------
+
+5. FIRST 5 CLEANED RECORDS (Train Split Sample):
+
+   [Record #1]
+   Text        : 4 blankets 4 coats long sleeve shirts sweatpants
+   Emergency   : 0
+   Class Labels: []
+
+   [Record #2]
+   Text        : many fisherfolk have lost their families homes and livelihood
+   Emergency   : 1
+   Class Labels: ['emergency', 'aid_related', 'shelter', 'refugees', 'death', 'buildings']
+
+   [Record #3]
+   Text        : but due to lack of installed hydro electric power stations the country is dependent on its neighbors for electricity during the winter
+   Emergency   : 1
+   Class Labels: ['emergency']
+
+   [Record #4]
+   Text        : good evening there is a pile of undisposed waste at the lycee of carrefour right by the entry of the doctors without borders can they remove them please
+   Emergency   : 1
+   Class Labels: ['emergency', 'request', 'aid_related', 'other_aid', 'direct_report']
+
+   [Record #5]
+   Text        : these child centered spaces which are housed in tents provide children with basic education and psychosocial interventions structured play activities to help them heal from the wounds of war and struggle under the taliban
+   Emergency   : 1
+   Class Labels: ['emergency', 'aid_related', 'medical_help']
+
+================================================================================
+ END OF DATASET SUMMARY
+================================================================================
