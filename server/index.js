@@ -451,6 +451,13 @@ app.post('/api/incidents/:id/assign', authenticateToken, async (req, res) => {
         return res.status(409).json({ error: 'Incident has already been accepted by another responder.' });
       }
 
+      const acceptLat = req.body.lat || responder.lat;
+      const acceptLng = req.body.lng || responder.lng;
+
+      if (req.body.lat && req.body.lng) {
+        await dbRun(`UPDATE responders SET lat = ?, lng = ? WHERE id = ?`, [req.body.lat, req.body.lng, responder.id]);
+      }
+
       clearDispatchTimer(incidentId);
 
       await dbRun(
@@ -468,14 +475,24 @@ app.post('/api/incidents/:id/assign', authenticateToken, async (req, res) => {
       await dbRun(
         `INSERT INTO incident_updates (incident_id, status, note, updated_by_name, lat, lng)
          VALUES (?, 'Assigned', ?, ?, ?, ?)`,
-        [incidentId, `Accepted by ${req.user.full_name} (${responder.organization_name})`, req.user.full_name, responder.lat, responder.lng]
+        [incidentId, `Accepted by ${req.user.full_name} (${responder.organization_name})`, req.user.full_name, acceptLat, acceptLng]
       );
 
-      await logAudit(req.user.id, req.user.full_name, 'ACCEPT_ASSIGNMENT', incidentId, `Accepted assignment`, req);
+      await logAudit(req.user.id, req.user.full_name, 'ACCEPT_ASSIGNMENT', incidentId, `Accepted assignment at GPS: ${acceptLat}, ${acceptLng}`, req);
 
       const updated = await dbGet('SELECT * FROM incidents WHERE id = ?', [incidentId]);
-      io.to(`incident_${incidentId}`).emit('incident_updated', updated);
-      io.to('dispatch_room').emit('incident_updated', updated);
+      const respUser = await dbGet(`SELECT r.*, u.full_name, u.phone FROM responders r JOIN users u ON r.user_id = u.id WHERE r.id = ?`, [responder.id]);
+      if (updated) {
+        if (respUser) {
+          respUser.lat = acceptLat;
+          respUser.lng = acceptLng;
+        }
+        updated.assigned_responder = respUser;
+      }
+
+      io.emit('incident_status_changed', { incident: updated, message: `${req.user.full_name} accepted incident ${incidentId}` });
+      io.emit('responder_accepted_incident', { incident: updated, responder: respUser });
+      io.emit('incident_updated', updated);
 
       return res.json({ success: true, message: 'Assignment accepted', incident: updated });
     } else if (action === 'decline') {
@@ -754,14 +771,65 @@ io.on('connection', (socket) => {
   });
 
   socket.on('live_gps_stream', (data) => {
-    const { incidentId, lat, lng, heading } = data;
-    io.to(`incident_${incidentId}`).emit('responder_gps_update', { lat, lng, heading });
-    io.to('dispatch_room').emit('responder_gps_update', { lat, lng, heading });
+    const { incidentId, lat, lng, heading, responderName } = data;
+    io.emit('responder_gps_update', { incidentId, lat, lng, heading, responderName });
   });
+});
+
+// ================= DATABASE DEDUPLICATION ROUTINE =================
+async function cleanDatabaseDuplicates() {
+  try {
+    // 1. Remove static demo incidents (INC-2026-1049, INC-2026-1032, etc.)
+    await dbRun(`
+      DELETE FROM incidents 
+      WHERE id IN ('INC-2026-1049', 'INC-2026-1032')
+    `);
+
+    // 2. Remove duplicate incidents with identical IDs
+    await dbRun(`
+      DELETE FROM incidents 
+      WHERE rowid NOT IN (
+        SELECT MIN(rowid) 
+        FROM incidents 
+        GROUP BY id
+      )
+    `);
+
+    // 3. Remove duplicate users with identical emails
+    await dbRun(`
+      DELETE FROM users 
+      WHERE rowid NOT IN (
+        SELECT MIN(rowid) 
+        FROM users 
+        GROUP BY LOWER(email)
+      )
+    `);
+
+    // 4. Remove duplicate contacts
+    await dbRun(`
+      DELETE FROM contacts 
+      WHERE rowid NOT IN (
+        SELECT MIN(rowid) 
+        FROM contacts 
+        GROUP BY name, phone
+      )
+    `);
+
+    console.log("🧹 SQLite database duplicates and static demo data cleaned successfully.");
+  } catch (e) {
+    console.warn("Deduplication warning:", e.message);
+  }
+}
+
+// Admin API to trigger deduplication on demand
+app.post('/api/admin/clean-duplicates', async (req, res) => {
+  await cleanDatabaseDuplicates();
+  res.json({ success: true, message: "All duplicate data removed from database." });
 });
 
 // ================= SERVER STARTUP =================
 server.listen(PORT, async () => {
   await seedDatabase();
+  await cleanDatabaseDuplicates();
   console.log(`🚨 Hyperlocal Emergency Response Platform Server running on http://127.0.0.1:${PORT}`);
 });

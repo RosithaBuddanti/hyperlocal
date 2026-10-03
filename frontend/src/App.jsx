@@ -4,7 +4,7 @@ import AuthModal from "./components/AuthModal";
 import SosModal from "./components/SosModal";
 import CitizenDashboard from "./components/CitizenDashboard";
 import ResponderDashboard from "./components/ResponderDashboard";
-import { authApi } from "./services/api";
+import { authApi, removeDuplicateData } from "./services/api";
 
 export default function App() {
   // Navigation views: 'landing' | 'citizen-dashboard' | 'responder-dashboard'
@@ -20,8 +20,11 @@ export default function App() {
   const [submittedIncident, setSubmittedIncident] = useState(null);
 
   useEffect(() => {
-    // Check if previously logged in user token exists
-    const storedUser = localStorage.getItem("aegis_user");
+    // 1. Proactively purge any duplicate entries across localStorage on mount
+    removeDuplicateData();
+
+    // 2. Check if previously logged in user token exists
+    const storedUser = localStorage.getItem("aegis_user") || localStorage.getItem("emergency_user");
     if (storedUser) {
       try {
         const user = JSON.parse(storedUser);
@@ -30,6 +33,7 @@ export default function App() {
         else if (user.role === "responder") setCurrentView("responder-dashboard");
       } catch (e) {
         localStorage.removeItem("aegis_user");
+        localStorage.removeItem("emergency_user");
       }
     }
   }, []);

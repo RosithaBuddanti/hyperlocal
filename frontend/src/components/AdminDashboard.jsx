@@ -232,33 +232,35 @@ export default function AdminDashboard({ currentUser }) {
               </tr>
             </thead>
             <tbody>
-              {(filteredIncidents.length > 0 ? filteredIncidents : [
-                { id: "INC-2025-001", emergency_type: "Road Accident", status: "En Route", time: "10:34 AM", assigned_responder: { full_name: "Ambulance Unit 1" } },
-                { id: "INC-2025-002", emergency_type: "Medical", status: "Assigned", time: "10:12 AM", assigned_responder: { full_name: "Paramedic Alpha" } },
-                { id: "INC-2025-003", emergency_type: "Fire", status: "Reported", time: "09:45 AM", assigned_responder: null },
-                { id: "INC-2025-004", emergency_type: "Crime", status: "Resolved", time: "08:30 AM", assigned_responder: { full_name: "Patrol Team 4" } },
-                { id: "INC-2025-005", emergency_type: "Medical", status: "Resolved", time: "07:15 AM", assigned_responder: { full_name: "Ambulance Unit 2" } }
-              ]).map((inc) => (
-                <tr key={inc.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <td style={{ padding: "12px 10px", fontFamily: "monospace", fontWeight: "800", color: "#2563eb" }}>
-                    {inc.id}
-                  </td>
-                  <td style={{ padding: "12px 10px", fontWeight: "600", color: "#0f172a" }}>
-                    {inc.emergency_type}
-                  </td>
-                  <td style={{ padding: "12px 10px" }}>
-                    <span className={`badge-status ${inc.status === "Resolved" ? "badge-resolved" : inc.status === "En Route" ? "badge-en-route" : "badge-assigned"}`}>
-                      {inc.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: "12px 10px", color: "#64748b" }}>
-                    {inc.time || new Date(inc.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td style={{ padding: "12px 10px", color: "#64748b" }}>
-                    {inc.assigned_responder?.full_name || "Unassigned"}
+              {filteredIncidents.length > 0 ? (
+                filteredIncidents.map((inc) => (
+                  <tr key={inc.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <td style={{ padding: "12px 10px", fontFamily: "monospace", fontWeight: "800", color: "#2563eb" }}>
+                      {inc.id}
+                    </td>
+                    <td style={{ padding: "12px 10px", fontWeight: "600", color: "#0f172a" }}>
+                      {inc.emergency_type}
+                    </td>
+                    <td style={{ padding: "12px 10px" }}>
+                      <span className={`badge-status ${inc.status === "Resolved" ? "badge-resolved" : inc.status === "En Route" ? "badge-en-route" : "badge-assigned"}`}>
+                        {inc.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: "12px 10px", color: "#64748b" }}>
+                      {inc.time || new Date(inc.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td style={{ padding: "12px 10px", color: "#64748b" }}>
+                      {inc.assigned_responder?.full_name || "Unassigned"}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} style={{ padding: "24px 10px", textAlign: "center", color: "#94a3b8" }}>
+                    No active emergency incidents recorded.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

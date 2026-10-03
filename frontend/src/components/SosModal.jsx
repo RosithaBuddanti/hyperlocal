@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { 
   AlertOctagon, X, MapPin, Navigation, CheckSquare, Square, 
-  AlertCircle, CheckCircle2, ArrowRight
+  AlertCircle, CheckCircle2, ArrowRight, Shield, Flame, HeartPulse, Activity,
+  Map, ChevronDown, ChevronUp
 } from "lucide-react";
 import MapComponent from "./MapComponent";
 import { incidentApi } from "../services/api";
+import { sounds } from "../services/soundEffects";
 
 const EXACT_CHECKLIST = [
   "Person injured",
@@ -22,6 +24,7 @@ export default function SosModal({ isOpen, onClose, onSubmitted }) {
   const [checklistError, setChecklistError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocating, setIsLocating] = useState(true);
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const [coords, setCoords] = useState({ lat: 17.5800, lng: 78.4867 });
 
   useEffect(() => {
@@ -29,11 +32,13 @@ export default function SosModal({ isOpen, onClose, onSubmitted }) {
       setChecklist([]);
       setDescription("");
       setChecklistError("");
+      setShowMapPicker(false);
       handleDetectLocation();
     }
   }, [isOpen]);
 
   const handleDetectLocation = () => {
+    sounds.playTap();
     setIsLocating(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -42,6 +47,7 @@ export default function SosModal({ isOpen, onClose, onSubmitted }) {
             lat: parseFloat(pos.coords.latitude.toFixed(5)),
             lng: parseFloat(pos.coords.longitude.toFixed(5))
           });
+          sounds.playStep();
           setIsLocating(false);
         },
         () => {
@@ -56,6 +62,7 @@ export default function SosModal({ isOpen, onClose, onSubmitted }) {
   };
 
   const handleToggleChecklist = (item) => {
+    sounds.playTap();
     setChecklistError("");
     if (checklist.includes(item)) {
       setChecklist(checklist.filter(i => i !== item));
@@ -64,18 +71,42 @@ export default function SosModal({ isOpen, onClose, onSubmitted }) {
     }
   };
 
+  // Dynamic service calculation
+  const getDispatchedService = () => {
+    if (checklist.includes("Fire or smoke") || checklist.includes("Person trapped")) {
+      return { name: "Fire Department", icon: <Flame size={16} color="#ff334b" />, color: "#ff334b" };
+    }
+    if (checklist.includes("Crime/personal safety threat")) {
+      return { name: "Police Safety Unit", icon: <Shield size={16} color="#00e5ff" />, color: "#00e5ff" };
+    }
+    if (checklist.includes("Person injured") || checklist.includes("Person unconscious") || checklist.includes("Road accident")) {
+      return { name: "Emergency Ambulance", icon: <HeartPulse size={16} color="#00ff88" />, color: "#00ff88" };
+    }
+    return { name: "Quick Response Unit", icon: <Activity size={16} color="#eab308" />, color: "#eab308" };
+  };
+
+  const currentService = getDispatchedService();
+
+  // Danger severity score
+  const severityScore = checklist.length;
+  const severityLabel = severityScore === 0 ? "Select Conditions" :
+    severityScore === 1 ? "Level 1 • High Priority" :
+    severityScore === 2 ? "Level 2 • Severe Emergency" :
+    "Level 3 • CRITICAL LIFE SAFETY";
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Mandatory Checklist validation: At least 1 item must be selected
+    // Mandatory Checklist validation
     if (!checklist || checklist.length === 0) {
+      sounds.playAlertSiren();
       setChecklistError("⚠️ Please select at least one item from the emergency checklist before submitting.");
       return;
     }
 
     setIsSubmitting(true);
+    sounds.playAlertSiren();
     try {
-      // Determine base type from checklist
       let type = "Medical";
       if (checklist.includes("Fire or smoke") || checklist.includes("Person trapped")) type = "Fire";
       else if (checklist.includes("Crime/personal safety threat")) type = "Crime";
@@ -83,7 +114,7 @@ export default function SosModal({ isOpen, onClose, onSubmitted }) {
 
       const payload = {
         emergency_type: type,
-        description: description.trim(), // Optional description
+        description: description.trim(),
         checklist,
         lat: coords.lat,
         lng: coords.lng,
@@ -91,10 +122,11 @@ export default function SosModal({ isOpen, onClose, onSubmitted }) {
       };
 
       const res = await incidentApi.create(payload);
+      sounds.playSuccess();
       if (onSubmitted) onSubmitted(res.incident || res.data);
       onClose();
     } catch (err) {
-      alert("Emergency SOS report submitted.");
+      sounds.playSuccess();
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -105,48 +137,70 @@ export default function SosModal({ isOpen, onClose, onSubmitted }) {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-container" style={{ maxWidth: "640px", padding: "28px", background: "#0e1424", border: "1px solid rgba(255,51,75,0.4)" }}>
+      <div className="modal-container" style={{ maxWidth: "580px", padding: "24px", background: "#0e1424", border: "1px solid rgba(255,51,75,0.4)" }}>
         
         {/* Close Button */}
         <button
-          onClick={onClose}
+          onClick={() => { sounds.playTap(); onClose(); }}
           style={{ position: "absolute", top: "18px", right: "18px", background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer" }}
         >
           <X size={20} />
         </button>
 
         {/* Modal Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
-          <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "#ff334b", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+          <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "#ff334b", color: "white", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 16px rgba(255,51,75,0.4)" }}>
             <AlertOctagon size={22} />
           </div>
-          <h2 style={{ fontSize: "1.35rem", fontWeight: "900", color: "#f8fafc" }}>
-            Emergency SOS Report
-          </h2>
+          <div>
+            <h2 style={{ fontSize: "1.3rem", fontWeight: "900", color: "#f8fafc", margin: 0 }}>
+              Emergency SOS Report
+            </h2>
+          </div>
         </div>
-        <p style={{ color: "#94a3b8", fontSize: "0.85rem", marginBottom: "20px" }}>
-          Select all conditions that apply. Checklist is <strong>mandatory</strong>; description is <strong>optional</strong>.
+        <p style={{ color: "#94a3b8", fontSize: "0.82rem", marginBottom: "14px" }}>
+          Select all conditions that apply. Checklist is <strong>mandatory</strong>.
         </p>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        {/* Dynamic Live Triage Badge */}
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "space-between", 
+          padding: "8px 12px", 
+          borderRadius: "8px", 
+          background: "rgba(15, 23, 42, 0.7)", 
+          border: `1px solid ${currentService.color}40`,
+          marginBottom: "14px" 
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", color: currentService.color, fontWeight: "700" }}>
+            {currentService.icon}
+            <span>Target Dispatch: {currentService.name}</span>
+          </div>
+          <div style={{ fontSize: "0.72rem", color: severityScore > 2 ? "#ff334b" : severityScore > 0 ? "#f59e0b" : "#64748b", fontWeight: "800", textTransform: "uppercase" }}>
+            {severityLabel}
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           
           {/* 1. Mandatory Checklist */}
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-              <label style={{ fontSize: "0.85rem", fontWeight: "800", color: "#ff334b" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+              <label style={{ fontSize: "0.82rem", fontWeight: "800", color: "#ff334b" }}>
                 1. Emergency Checklist (Select at least one) *
               </label>
-              <span style={{ fontSize: "0.72rem", color: "#ff334b", fontWeight: "700" }}>Mandatory</span>
+              <span style={{ fontSize: "0.7rem", color: "#ff334b", fontWeight: "700" }}>Mandatory</span>
             </div>
 
             {checklistError && (
-              <div style={{ background: "rgba(255, 51, 75, 0.2)", border: "1px solid rgba(255, 51, 75, 0.4)", color: "#ff4d67", padding: "8px 12px", borderRadius: "8px", fontSize: "0.82rem", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-                <AlertCircle size={16} />
+              <div style={{ background: "rgba(255, 51, 75, 0.2)", border: "1px solid rgba(255, 51, 75, 0.4)", color: "#ff4d67", padding: "8px 12px", borderRadius: "8px", fontSize: "0.8rem", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                <AlertCircle size={15} />
                 <span>{checklistError}</span>
               </div>
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
               {EXACT_CHECKLIST.map((item) => {
                 const isChecked = checklist.includes(item);
                 return (
@@ -154,21 +208,22 @@ export default function SosModal({ isOpen, onClose, onSubmitted }) {
                     key={item}
                     onClick={() => handleToggleChecklist(item)}
                     style={{
-                      padding: "10px 12px",
+                      padding: "8px 10px",
                       borderRadius: "8px",
                       border: isChecked ? "1.5px solid #ff334b" : "1px solid rgba(255,255,255,0.1)",
-                      background: isChecked ? "rgba(255, 51, 75, 0.15)" : "rgba(30, 41, 59, 0.45)",
+                      background: isChecked ? "rgba(255, 51, 75, 0.18)" : "rgba(30, 41, 59, 0.45)",
                       color: isChecked ? "#ffffff" : "#cbd5e1",
-                      fontSize: "0.82rem",
+                      fontSize: "0.8rem",
                       fontWeight: isChecked ? "700" : "500",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: "8px",
-                      transition: "all 0.15s ease"
+                      gap: "6px",
+                      transition: "all 0.15s ease",
+                      transform: isChecked ? "scale(1.01)" : "scale(1)"
                     }}
                   >
-                    {isChecked ? <CheckSquare size={16} color="#ff334b" /> : <Square size={16} color="#64748b" />}
+                    {isChecked ? <CheckSquare size={15} color="#ff334b" /> : <Square size={15} color="#64748b" />}
                     <span>{item}</span>
                   </div>
                 );
@@ -178,60 +233,95 @@ export default function SosModal({ isOpen, onClose, onSubmitted }) {
 
           {/* 2. Optional Description */}
           <div>
-            <label style={{ fontSize: "0.85rem", fontWeight: "700", color: "#94a3b8", display: "block", marginBottom: "6px" }}>
+            <label style={{ fontSize: "0.82rem", fontWeight: "700", color: "#94a3b8", display: "block", marginBottom: "4px" }}>
               2. Emergency Description <span style={{ color: "#64748b", fontWeight: "400" }}>(Optional)</span>
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe what happened, landmarks, floor number... (Optional)"
+              placeholder="Describe what happened, landmarks... (Optional)"
               rows={2}
-              style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", background: "rgba(30,41,59,0.7)", border: "1px solid rgba(255,255,255,0.15)", color: "#f8fafc", fontSize: "0.88rem" }}
+              style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", background: "rgba(30,41,59,0.7)", border: "1px solid rgba(255,255,255,0.15)", color: "#f8fafc", fontSize: "0.85rem" }}
             />
           </div>
 
-          {/* 3. Automatic Location Detection */}
+          {/* 3. Clean Automatic GPS Detection with 'Open Map' Button */}
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-              <label style={{ fontSize: "0.85rem", fontWeight: "700", color: "#00e5ff", display: "flex", alignItems: "center", gap: "6px" }}>
-                <MapPin size={16} color="#00e5ff" /> 3. Automatic GPS Location Detection
-              </label>
-              <button
-                type="button"
-                onClick={handleDetectLocation}
-                style={{ background: "transparent", border: "none", color: "#00e5ff", fontSize: "0.78rem", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
-              >
-                <Navigation size={12} className={isLocating ? "animate-spin" : ""} />
-                {isLocating ? "Detecting GPS..." : "Refresh Location"}
-              </button>
+            <div style={{ 
+              background: "rgba(30, 41, 59, 0.5)", 
+              border: "1px solid rgba(56, 189, 248, 0.25)", 
+              borderRadius: "10px", 
+              padding: "10px 12px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "8px"
+            }}>
+              <div>
+                <div style={{ fontSize: "0.8rem", fontWeight: "800", color: "#00e5ff", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <MapPin size={15} color="#00e5ff" />
+                  <span>GPS Auto-Detected:</span>
+                </div>
+                <div style={{ fontSize: "0.76rem", color: "#cbd5e1", marginTop: "2px", fontFamily: "monospace" }}>
+                  Lat: {coords.lat}, Lng: {coords.lng}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  type="button"
+                  onClick={handleDetectLocation}
+                  style={{ background: "transparent", border: "1px solid rgba(0,229,255,0.3)", borderRadius: "6px", color: "#00e5ff", fontSize: "0.75rem", fontWeight: "600", padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                >
+                  <Navigation size={11} className={isLocating ? "animate-spin" : ""} />
+                  {isLocating ? "Locating..." : "Refresh GPS"}
+                </button>
+
+                {/* Open Map Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowMapPicker(!showMapPicker)}
+                  style={{ background: showMapPicker ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.08)", border: "1px solid rgba(0, 229, 255, 0.4)", borderRadius: "6px", color: "#00e5ff", fontSize: "0.75rem", fontWeight: "700", padding: "4px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                >
+                  <Map size={12} />
+                  {showMapPicker ? "Hide Map" : "Open Map"}
+                  {showMapPicker ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                </button>
+              </div>
             </div>
 
-            <div style={{ height: "160px", borderRadius: "8px", overflow: "hidden", marginBottom: "6px", border: "1px solid rgba(56,189,248,0.3)" }}>
-              <MapComponent
-                height="160px"
-                center={[coords.lat, coords.lng]}
-                pickerMode={true}
-                pickerCoords={coords}
-                onPickerCoordsChange={(lat, lng) => setCoords({ lat: parseFloat(lat.toFixed(5)), lng: parseFloat(lng.toFixed(5)) })}
-              />
-            </div>
-            <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
-              Detected: Lat {coords.lat}, Lng {coords.lng} (Drag pin if needed)
-            </div>
+            {/* Expandable Map Picker when clicked */}
+            {showMapPicker && (
+              <div style={{ marginTop: "8px", height: "180px", borderRadius: "8px", overflow: "hidden", border: "1.5px solid rgba(0, 229, 255, 0.4)", animation: "fadeIn 0.2s ease" }}>
+                <MapComponent
+                  height="180px"
+                  center={[coords.lat, coords.lng]}
+                  pickerMode={true}
+                  pickerCoords={coords}
+                  onPickerCoordsChange={(lat, lng) => setCoords({ lat: parseFloat(lat.toFixed(5)), lng: parseFloat(lng.toFixed(5)) })}
+                />
+              </div>
+            )}
           </div>
 
           {/* Actions */}
-          <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "8px" }}>
-            <button type="button" onClick={onClose} className="btn-outline">
+          <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "2px" }}>
+            <button 
+              type="button" 
+              onClick={() => { sounds.playTap(); onClose(); }} 
+              className="btn-outline"
+              style={{ padding: "10px 18px", fontSize: "0.88rem" }}
+            >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="btn-emergency-main"
-              style={{ padding: "12px 28px", fontSize: "0.95rem" }}
+              style={{ padding: "11px 24px", fontSize: "0.92rem", flex: 1 }}
             >
-              {isSubmitting ? "Submitting..." : "🚨 Submit SOS Emergency Report"}
+              {isSubmitting ? "Dispatching..." : "🚨 Transmit SOS Emergency"}
             </button>
           </div>
 

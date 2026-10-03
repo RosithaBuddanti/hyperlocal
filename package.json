@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "concurrently \"node server/index.js\" \"cd frontend && npm run dev\"",
+    "build": "cd frontend && npm install && npm run build",
     "start:server": "node server/index.js",
     "start:client": "cd frontend && npm run dev",
     "test": "node server/tests/unit.test.js"

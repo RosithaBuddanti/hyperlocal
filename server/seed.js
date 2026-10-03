@@ -75,53 +75,7 @@ async function seedDatabase() {
     );
   }
 
-  // 4. Sample Incidents
-  const sampleIncidents = [
-    {
-      id: 'INC-2026-1049',
-      citizen_name: 'Aarav Sharma',
-      citizen_phone: '+91 98765 43210',
-      type: 'Medical',
-      severity: 'Critical',
-      service: 'Ambulance',
-      desc: 'Elderly citizen collapsed near park bench, shallow breathing and unresponsive.',
-      checklist: JSON.stringify(['Person unconscious', 'Immediate danger']),
-      lat: 12.9735,
-      lng: 77.5985,
-      address: 'Cubbon Park North Entrance, MG Road',
-      status: 'Reported'
-    },
-    {
-      id: 'INC-2026-1032',
-      citizen_name: 'Neha Patel',
-      citizen_phone: '+91 98765 43214',
-      type: 'Fire',
-      severity: 'Critical',
-      service: 'Fire',
-      desc: 'Smoke emerging from 2nd floor electrical switchboard in commercial complex.',
-      checklist: JSON.stringify(['Fire or smoke', 'Immediate danger']),
-      lat: 12.9660,
-      lng: 77.5900,
-      address: 'Brigade Road Junction',
-      status: 'Reported'
-    }
-  ];
-
-  for (const inc of sampleIncidents) {
-    await dbRun(
-      `INSERT INTO incidents (id, citizen_name, citizen_phone, emergency_type, severity, suggested_service, description, checklist_json, lat, lng, address, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [inc.id, inc.citizen_name, inc.citizen_phone, inc.type, inc.severity, inc.service, inc.desc, inc.checklist, inc.lat, inc.lng, inc.address, inc.status]
-    );
-
-    await dbRun(
-      `INSERT INTO incident_updates (incident_id, status, note, updated_by_name)
-       VALUES (?, ?, ?, ?)`,
-      [inc.id, inc.status, 'Emergency incident dispatched to discovery network.', 'System AI Dispatcher']
-    );
-  }
-
-  // 5. Area Broadcast Alert
+  // 4. Area Broadcast Alert
   await dbRun(
     `INSERT INTO area_alerts (title, message, alert_type, radius_km, center_lat, center_lng)
      VALUES (?, ?, ?, ?, ?, ?)`,
